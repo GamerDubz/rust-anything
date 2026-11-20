@@ -39,8 +39,12 @@ PowerShell and verify that `where.exe link` finds the MSVC linker. Tests use tem
 including a path with spaces and Unicode characters, and remove generated artifacts after a
 successful run.
 
-For agents, `rust-anything setup` registers everything (see Quick start). To add the MCP server to
-one project by hand instead (`.mcp.json`):
+For agents, `rust-anything setup` registers everything (see Quick start). The same MCP server and
+skill also ship as a plugin from `.agents/plugins/marketplace.json` (Codex:
+`codex plugin marketplace add …` then `codex plugin add rust-anything@rust-anything`; Claude Code:
+`claude plugin marketplace add …` then `claude plugin install rust-anything@rust-anything`, or the
+`/plugin install` line in the README). To add the MCP server to one project by hand instead
+(`.mcp.json`):
 
 ```json
 { "mcpServers": { "rust-anything": { "command": "rust-anything", "args": ["mcp"] } } }
