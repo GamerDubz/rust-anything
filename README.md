@@ -31,7 +31,7 @@ and every piece is checked against that recording before it moves on. It doesn't
 <sub><a href="#languages">Languages</a> · <a href="docs/how-it-works.md#how-it-works">How it works</a> · <a href="docs/whole-apps.md#port-a-whole-app">Whole apps</a> · <a href="#sponsors">Sponsors</a> · <a href="LICENSE">MIT</a></sub><br>
 Made in Türkiye 🇹🇷 by <a href="https://github.com/erkamyaman">erKam Yaman</a> · <a href="https://github.com/sponsors/erkamyaman">❤️ Sponsor me</a> · Sponsored by <a href="https://coderabbit.link/erkamyaman"><img src="docs/assets/brands/coderabbit.png" width="22" height="22" align="absmiddle" alt=""> <b>CodeRabbit</b></a></p>
 
-<p align="center">New in 2.0: <a href="docs/real-world.md#prettier">Prettier, ported to Rust</a>. 19x faster · 15,837 of 17,224 recorded runs fully in Rust · every run byte-identical</p>
+<p align="center">New in 2.0: <a href="docs/real-world.md#prettier">Prettier, ported to Rust</a>. 19x faster · 15,861 of 17,224 recorded runs fully in Rust · every run byte-identical</p>
 
 <p align="center">
   <img src="docs/assets/prettier.gif" alt="Prettier and its Rust port format the same 59 real files, one process per file: Prettier takes 3.63 s, the Rust port 0.20 s, with the same output byte for byte." width="820">
@@ -80,15 +80,15 @@ and servers, or only the slow part, one hot path at a time:
 | json-server, from start to first response | 79 to 85 ms | **8 to 10 ms** |
 | [Fuse.js](docs/real-world.md#fusejs) search over 50,000 strings, per query | 91.2 ms | **2.8 ms: 32x faster** |
 
-Prettier: 15,837 of 17,224 recorded runs format fully in Rust across 10 languages (JavaScript,
+Prettier: 15,861 of 17,224 recorded runs format fully in Rust across 10 languages (JavaScript,
 TypeScript, JSX, JSON, GraphQL, YAML, Markdown, CSS, SCSS, Less), and all 17,224 match Prettier
 byte for byte, since anything not ported yet falls back to Prettier. json-server: 514/514
 recorded HTTP cases match on a pure Rust binary. Measured on an Apple M4, two runs each, every
 output compared before timing ([details](docs/real-world.md)). Calling Rust once per small
 function is usually *slower* than a JIT; rust-anything finds the loop worth moving, and moves it. Against
 C the win is safety, not speed: [ffmpeg's libavutil](docs/real-world.md#ffmpeg) ported to Rust
-matches all 135,773 recorded calls and runs at about C's speed (15 of 34 benchmarks even, 6
-faster, 13 slower by 2 to 32%).
+matches all 226,447 recorded calls and runs at about C's speed (18 of 42 benchmarks even, 8
+faster, 16 slower by 3 to 40%).
 
 <p align="center">
   <img src="docs/assets/json-server.gif" alt="json-server as a Node server and as one Rust binary: memory at idle 74 MB and 3.5 MB, start to first response 79 to 85 ms and 8 to 10 ms, and 514 of 514 recorded HTTP cases match." width="820">
@@ -133,17 +133,12 @@ must be on your `PATH`):
 /plugin install rust-anything --marketplace erkamyaman/rust-anything
 ```
 
-Or from the agents marketplace in this repo (`.agents/plugins/marketplace.json` — same plugin under
-`plugin/`, with the skill and MCP server):
+In Codex, from the agents marketplace in this repo (`.agents/plugins/marketplace.json`, the same
+plugin under `plugin/`, with the skill and MCP server):
 
 ```sh
-# Codex
 codex plugin marketplace add erkamyaman/rust-anything
 codex plugin add rust-anything@rust-anything
-
-# Claude Code
-claude plugin marketplace add erkamyaman/rust-anything
-claude plugin install rust-anything@rust-anything
 ```
 
 `setup` adds the MCP server to each agent it finds and installs the workflow skill where the agent
@@ -264,6 +259,7 @@ comes next.
 ## Learn more
 
 - [How it works](docs/how-it-works.md): the loop, what `bridge` and `analyze` decide, hot paths, what it can't catch, what a real port takes, and keeping up with the original (`map`)
+- [Ship a port as a package](docs/packaging.md): maturin wheels and napi-rs per-platform npm packages, with the CI that builds them
 - [Port a whole app](docs/whole-apps.md): servers, CLIs and libraries, from the front door to `app lift`
 - [Examples and case studies](docs/examples.md): x18n, and real code in six languages
 - [Real-world ports](docs/real-world.md): json-server, Fuse.js, vercel/ms, with benchmarks

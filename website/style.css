@@ -1,0 +1,109 @@
+@import '@fontsource/ibm-plex-sans/400.css';
+@import '@fontsource/ibm-plex-sans/500.css';
+@import '@fontsource/ibm-plex-sans/600.css';
+@import '@fontsource/ibm-plex-sans/400-italic.css';
+@import '@fontsource/ibm-plex-sans-condensed/500.css';
+@import '@fontsource/ibm-plex-sans-condensed/600.css';
+@import '@fontsource/ibm-plex-mono/400.css';
+@import '@fontsource/ibm-plex-mono/500.css';
+@import 'tailwindcss';
+
+@source './pages';
+@source './components';
+
+@custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
+
+:root {
+  --bg: #f2f3ef;
+  --bg-soft: #e8eae4;
+  --card: #f8f9f6;
+  --fg: #171b1e;
+  --muted: #596168;
+  --line: #d3d7cf;
+  --brand: #a33a0f;
+  --brand-ink: #8e320c;
+  --brand-soft: rgb(163 58 15 / 0.08);
+  --good: #23705d;
+  --good-soft: rgb(35 112 93 / 0.1);
+  --screen: #171b1e;
+  --screen-fg: #d9ddd6;
+  color-scheme: light;
+}
+
+[data-theme='dark'] {
+  --bg: #0e1215;
+  --bg-soft: #161b1f;
+  --card: #13181c;
+  --fg: #e6e8e3;
+  --muted: #98a0a6;
+  --line: rgb(230 232 227 / 0.11);
+  --brand: #e0763f;
+  --brand-ink: #f08a55;
+  --brand-soft: rgb(224 118 63 / 0.12);
+  --good: #63c3a7;
+  --good-soft: rgb(99 195 167 / 0.12);
+  --screen: #0a0d10;
+  --screen-fg: #d9ddd6;
+  color-scheme: dark;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-bg-soft: var(--bg-soft);
+  --color-card: var(--card);
+  --color-fg: var(--fg);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-brand: var(--brand);
+  --color-brand-ink: var(--brand-ink);
+  --color-brand-soft: var(--brand-soft);
+  --color-good: var(--good);
+  --color-good-soft: var(--good-soft);
+  --font-sans: 'IBM Plex Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-display: 'IBM Plex Sans Condensed', 'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, Menlo, Consolas, monospace;
+}
+
+html {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  scroll-padding-top: 5rem;
+}
+
+body {
+  background: var(--bg);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+::selection {
+  background: rgb(163 58 15 / 0.25);
+}
+
+:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}
+
+.thin-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(115 115 115 / 0.4) transparent;
+}
+
+details > summary {
+  list-style: none;
+}
+details > summary::-webkit-details-marker {
+  display: none;
+}
+
+.no-ring:focus-visible {
+  outline: none;
+}
+
+[dir='rtl'] .rtl-flip {
+  display: inline-block;
+  transform: scaleX(-1);
+}

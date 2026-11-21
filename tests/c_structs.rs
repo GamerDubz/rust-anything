@@ -73,6 +73,11 @@ long parse_num(const char *s, char **end)
     return v;
 }
 
+const char *skip(const char *s, int n)
+{
+    return s + n;
+}
+
 int held(Holder h)
 {
     return h.p != 0;
@@ -129,6 +134,11 @@ pub fn strstart(
     1
 }
 
+pub fn skip(s: Option<&[u8]>, n: c_int) -> Option<usize> {
+    let s = s?;
+    usize::try_from(n).ok().filter(|&n| n <= s.len() + 1)
+}
+
 pub fn parse_num(s: Option<&[u8]>, end: Option<&mut Option<usize>>) -> c_long {
     let s = s.unwrap_or_default();
     let digits = s.iter().take_while(|b| b.is_ascii_digit()).count();
@@ -154,6 +164,8 @@ const INPUTS: &str = r#"{"fn": "mul_q", "args": [{"num": 1, "den": 2}, {"num": 2
 {"fn": "parse_num", "args": ["123abc", true]}
 {"fn": "parse_num", "args": ["xyz", true]}
 {"fn": "parse_num", "args": ["42", null]}
+{"fn": "skip", "args": ["abc", 2]}
+{"fn": "skip", "args": ["abc", 100]}
 "#;
 
 fn project() -> PathBuf {
@@ -259,6 +271,49 @@ fn structs_by_value_and_pointers_into_strings_cross_the_c_bridge() {
         .unwrap();
     assert!(fmt.success());
 
+    harness::record(&RecordOptions {
+        crate_dir: &dir,
+        count: 40,
+        inputs: None,
+        module: None,
+        resolve_from: None,
+        node_args: &[],
+    })
+    .unwrap();
+    let generated: Vec<serde_json::Value> = std::fs::read_to_string(dir.join("cases.jsonl"))
+        .unwrap()
+        .lines()
+        .map(|l| serde_json::from_str(l).unwrap())
+        .collect();
+    let of = |name: &'static str| generated.iter().filter(move |c| c["fn"] == name);
+    for c in of("mul_q").chain(of("scale")) {
+        assert!(c["args"][0].is_object() && c.get("ok").is_some(), "{c}");
+    }
+    let dens: Vec<&serde_json::Value> = of("mul_q").map(|c| &c["args"][0]["den"]).collect();
+    for edge in [0, i64::from(i32::MIN), i64::from(i32::MAX)] {
+        assert!(
+            dens.contains(&&serde_json::json!(edge)),
+            "den {edge} in {dens:?}"
+        );
+    }
+    let starts: Vec<&serde_json::Value> = of("strstart").map(|c| &c["args"][2]).collect();
+    for start in [
+        serde_json::json!(true),
+        serde_json::Value::Null,
+        serde_json::json!(0),
+    ] {
+        assert!(starts.contains(&&start), "{start} in {starts:?}");
+    }
+    assert!(
+        generated
+            .iter()
+            .all(|c| c["fn"] == "skip" || c.get("ok").is_some()),
+        "{:?}",
+        generated
+            .iter()
+            .find(|c| c["fn"] != "skip" && c.get("ok").is_none())
+    );
+
     let inputs = repo.join("inputs.jsonl");
     std::fs::write(&inputs, INPUTS).unwrap();
     harness::record(&RecordOptions {
@@ -280,6 +335,8 @@ fn structs_by_value_and_pointers_into_strings_cross_the_c_bridge() {
         r#""args": ["prefix=value", "nope", 3], "ok": {"return": 0, "ptr": 3}"#,
         r#""args": ["abc", "", 2], "ok": {"return": 1, "ptr": 0}"#,
         r#""args": ["123abc", true], "ok": {"return": 123, "end": 3}"#,
+        r#""args": ["abc", 2], "ok": 2"#,
+        r#""args": ["abc", 100], "error": "returns a pointer outside its arguments""#,
     ] {
         assert!(cases.contains(expected), "{expected} in {cases}");
     }
@@ -296,7 +353,7 @@ fn structs_by_value_and_pointers_into_strings_cross_the_c_bridge() {
         node_args: &[],
     })
     .unwrap();
-    assert_eq!(rows.len(), 4, "every function benchmarked");
+    assert_eq!(rows.len(), 5, "every function benchmarked");
 
     let gate = rust_anything::gate::gate(&dir, &[]).unwrap();
     assert!(gate.passed, "{:?}", gate.checks);

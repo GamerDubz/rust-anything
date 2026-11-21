@@ -1,0 +1,39 @@
+{
+  "$schema": "./node_modules/void/schema.json",
+  "output": "server",
+  "routing": {
+    "redirects": {
+      "/en": { "to": "/", "status": 301 },
+      "/en/*": { "to": "/:splat", "status": 301 },
+      "/docs": { "to": "/docs/introduction/what-is-rust-anything", "status": 301 },
+      "/docs/": { "to": "/docs/introduction/what-is-rust-anything", "status": 301 },
+      "/docs/*/": { "to": "/docs/:splat", "status": 301 }
+    },
+    "rewrites": {
+      "/": "/en",
+      "/docs/*": "/en/docs/:splat"
+    },
+    "headers": {
+      "/*.md": ["Content-Type: text/markdown; charset=utf-8"]
+    }
+  },
+  "head": {
+    "titleTemplate": "%s · rust-anything",
+    "htmlAttrs": { "lang": "en" },
+    "meta": [
+      { "name": "viewport", "content": "width=device-width, initial-scale=1" },
+      { "property": "og:site_name", "content": "rust-anything" },
+      { "property": "og:type", "content": "website" },
+      { "name": "twitter:card", "content": "summary_large_image" },
+      { "name": "theme-color", "content": "#a33a0f" }
+    ],
+    "link": [
+      { "rel": "icon", "href": "/favicon.ico", "sizes": "any" },
+      { "rel": "icon", "type": "image/png", "href": "/icon-192.png" },
+      { "rel": "apple-touch-icon", "href": "/apple-touch-icon.png" }
+    ]
+  },
+  "worker": {
+    "compatibility_date": "2026-02-24"
+  }
+}

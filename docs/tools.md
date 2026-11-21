@@ -177,6 +177,21 @@ Read-only.
 | `repo` | string | yes | Repository root. |
 | `crates` | string[] |  | Folders with crates kept outside the repository. |
 
+## Lay out packages
+
+Tool `package` · CLI `rust-anything package`
+
+Lay out installable packages for a gated port; writes files only, never builds other platforms or publishes. PyO3: a maturin project (abi3 wheel importable under the original module's name). napi: a main npm package whose loader picks `<name>-<platform>` from optionalDependencies and falls back to the original JS, one package per platform (this machine's binary copied in when built). wasm: one npm package with the built pkg/. PyO3 and napi also get a GitHub Actions workflow building macOS (arm64, x86_64), Linux (x86_64, aarch64) and Windows.
+
+| Parameter | Type | Required | Description |
+| --- | --- | --- | --- |
+| `crate` | string | yes | Folder of the generated crate (holds rust-anything.json). |
+| `name` | string |  | Package name on npm or PyPI; defaults to the crate name. |
+| `version` | string |  | Package version; defaults to the original package's. |
+| `out` | string |  | Output folder; defaults to <crate>/package. |
+| `fallback` | string |  | napi: module to load where no binary fits; defaults to the original file when it is plain JS that imports nothing. |
+| `dry_run` | boolean |  | List the files, write nothing. |
+
 ## Check definition of done
 
 Tool `gate` · CLI `rust-anything gate`
@@ -214,7 +229,7 @@ Runs the original's code or commands.
 | `db_reset` | string |  | Shell command that resets the database before each case (each start for servers); cases then run one at a time. |
 | `db_dump` | string |  | Shell command that prints the database's state (e.g. `sqlite3 app.db .dump`), run after each case or request and recorded with the effects. |
 | `args` | string[] |  | Servers: arguments every start gets after its command, the original's and every build's (["db.json"]). Implies http; saved. |
-| `fresh` | string[] |  | Servers: repository files or folders the server reads or writes, snapshotted and copied into a fresh working directory before every start. Implies http; saved. |
+| `fresh` | string[] |  | Repository files or folders the app reads or writes (a project tree, a database file), snapshotted and copied into a fresh working directory before every case (CLIs) or start (servers); a CLI's removed files are compared too. Saved. |
 | `pace` | integer |  | Servers: milliseconds to wait after each response, for work the server does after answering (a file watcher). Implies http; saved and used by replay; 0 removes it. |
 | `float_tolerance` | number |  | Numeric output: numbers match when they differ by at most this times the larger magnitude (absolute below 1), e.g. 1e-9. Saved with the cases; 0 removes it. |
 | `float_file` | string[] |  | Written files of raw floats, compared value by value within float_tolerance: `PATH=f32le` or `PATH=f64le`. Saved with the cases. |

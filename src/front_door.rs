@@ -313,7 +313,10 @@ use std::io::Write;
 use std::path::Path;
 use std::process::{{Command, ExitCode, ExitStatus}};
 
-const ROOT: &str = concat!(env!(\"CARGO_MANIFEST_DIR\"), \"/../..\");
+const ROOT: &str = match option_env!(\"RUST_ANYTHING_REPO\") {{
+    Some(root) => root,
+    None => concat!(env!(\"CARGO_MANIFEST_DIR\"), \"/../..\"),
+}};
 const RUN: &[&str] = &[{}];
 const FALLBACK_LOG: &str = \"{}\";
 
@@ -485,6 +488,10 @@ pub(crate) fn rustfmt(file: &Path) {
         .output();
 }
 
+/// Set when rust-anything builds a front door: the repository the original runs from, so a
+/// `rust/` that is a symlink to a folder elsewhere still finds it.
+pub(crate) const REPO_ENV: &str = "RUST_ANYTHING_REPO";
+
 pub(crate) fn cargo_build(app_dir: &Path, target_dir: Option<&Path>) -> Result<PathBuf> {
     let mut cmd = Command::new("cargo");
     cmd.args([
@@ -493,6 +500,11 @@ pub(crate) fn cargo_build(app_dir: &Path, target_dir: Option<&Path>) -> Result<P
         "--manifest-path",
     ])
     .arg(app_dir.join("Cargo.toml"));
+    if let Some(repo) = app_dir.parent().and_then(Path::parent)
+        && let Ok(repo) = repo.canonical()
+    {
+        cmd.env(REPO_ENV, repo);
+    }
     if let Some(dir) = target_dir {
         cmd.env("CARGO_TARGET_DIR", dir);
     }

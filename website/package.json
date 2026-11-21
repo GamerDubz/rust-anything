@@ -1,0 +1,35 @@
+{
+  "name": "rust-anything-website",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Documentation website for rust-anything",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "dev": "vp dev",
+    "build": "vp build",
+    "preview": "vp preview",
+    "deploy": "void deploy",
+    "cli-help": "node scripts/cli-help.mjs"
+  },
+  "dependencies": {
+    "@fontsource/ibm-plex-mono": "5.3.0",
+    "@fontsource/ibm-plex-sans": "5.3.0",
+    "@fontsource/ibm-plex-sans-condensed": "5.3.0",
+    "@void/md": "1.10.0",
+    "@void/react": "1.10.0",
+    "react": "19.3.1",
+    "react-dom": "19.3.1"
+  },
+  "devDependencies": {
+    "@resvg/resvg-wasm": "2.6.2",
+    "@tailwindcss/vite": "4.3.5",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "satori": "0.63.2",
+    "tailwindcss": "4.3.5",
+    "vite": "npm:@voidzero-dev/vite-plus-core@8.3.8000",
+    "vite-plus": "1.7.0",
+    "void": "1.10.0"
+  }
+}

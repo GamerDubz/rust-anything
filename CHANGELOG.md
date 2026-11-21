@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+- Prettier demo: about 75 differences from Prettier 3.6.2 outside the recorded corpus, found by
+  differential fuzzing, mutation testing and a Doc-level comparison, are fixed or handed to
+  Prettier. 355 new cases and the checks are in `demo/real-world/prettier-rs/equiv`. The
+  recorded corpus now runs 15,861 of 17,224 cases fully in Rust (7.9% fallback, was 15,837 and
+  8.1%).
+- `package` (CLI and MCP tool) lays out a gated port as packages end users install, and writes
+  files only: PyO3 ports become a maturin project (an abi3 wheel importable under the original's
+  module name), napi ports the napi-rs per-platform npm layout (a main package with
+  `optionalDependencies` on `<name>-<platform>`, a loader that falls back to the original JS where
+  no binary fits), wasm ports one npm package. PyO3 and napi ports also get a GitHub Actions
+  workflow building macOS (arm64, x86_64), Linux (x86_64, aarch64) and Windows. Installed from
+  their packages, `demo/fuzzy-napi` and `demo/fuzzy-rs` pass 2000/2000 recorded cases and
+  `demo/fixtures/python-textkit-rs` 1144/1144 (`docs/packaging.md`).
 - `fuzz`: a live differential test. It generates fresh inputs from a new seed (the record
   generator, skipping inputs already recorded), runs them through the original and the built
   port, and reports the mismatches the recorded cases missed. `--cases N` per function, `--seed S`
@@ -30,6 +43,15 @@
   In cases, give its starting offset, `true` for a `NULL` start, or `null` for a `NULL` pointer.
   A `**` the function advances as its own string (`av_get_token(const char **buf, ...)`) still
   stays in C, as does anything returning memory it allocates.
+- `record` (C): generated cases give struct parameters objects of their fields (zeros, ones,
+  minus ones, each field's minimum and maximum, each field zero with the others one, and small
+  random values) instead of values that were recorded as `TypeError`s, and `char **`
+  parameters `true`, `null` or offset 0.
+- `diff` (C): a case where the original returned or wrote a pointer outside its arguments (read
+  past a string, say) is undefined behavior like a crash, and any answer of the port passes it.
+- Case study: the ffmpeg ports add `av_mul_q`, `av_div_q`, `av_add_q`, `av_sub_q`, `av_d2q`,
+  `av_nearer_q`, `av_q2intfloat`, `av_rescale_q`, `av_rescale_q_rnd`, `av_strstart` and
+  `av_stristart`; 226,447/226,447 recorded calls, gate passes on all 10 crates.
 - `diff` (C): a case the original recorded as an error (an argument ctypes could not convert)
   passes when the port gives the same error, instead of always failing.
 - Contributors: `mise.toml` pins the toolchains CI uses, and `hk.pkl` runs the secrets check,
@@ -50,6 +72,23 @@
   write the Rust) and what PHP and C# support today. From a new-user QA review of the README by
   [Mashhood Ali](https://github.com/MASHHOOD2019), an independent AI evaluation and QA specialist
   who tests products and docs the way a new user would ([LinkedIn](https://www.linkedin.com/in/mashhood-ali-514862296)) (#118).
+- `app record --fresh` works for CLIs: every case starts from a snapshot of the given files or
+  folders (kept in `app-cases/files/`; a path ending in `/` gives its contents, so a whole project
+  can be the working directory), written files are what differs from it, and files a case
+  removes are recorded in `<case>.removed` and compared on replay. An `--inputs` case can also
+  `"remove"` files of the snapshot before it runs. `--fresh` alone no longer implies `--http`.
+- Front doors built by rust-anything find the original when `rust/` is a symlink to a folder
+  outside the repository (`RUST_ANYTHING_REPO` is set at build time).
+- Case study: ESLint 10.15.0 behind a Rust front door, 90 rules (`eslint:recommended` and 26
+  more), 10,585/10,585 recorded CLI runs at 3.6% fallback, gate passes on `eslint-stdin-rs`
+  (`demo/real-world/eslint-rs`, `docs/real-world.md#eslint`).
+- `bridge` and `analyze` read CommonJS exports: `module.exports = { a, b: c }`,
+  `module.exports.a = a` and `exports.a = a`, for functions declared in the file. ESLint (and
+  most Node code before ESM) exports this way, so its units showed no functions to bridge.
+- The `timestamps` normalizer also matches JavaScript's `Date#toString()`
+  (`Sat Nov 21 2026 01:30:12 GMT+0300 (...)`). ESLint's HTML report stamps its time that way:
+  the two recording runs differed only in the seconds, so only the seconds became a wildcard and a
+  replay ten minutes later failed.
 - Case study: ffmpeg's libavutil (n7.1), 10 units, 135,773/135,773 recorded calls, gate passes
   on each (`demo/real-world/ffmpeg-rs`, `docs/real-world.md#ffmpeg`).
 - C bridge: pointer parameters cross it with the original signatures. A `const` byte pointer
@@ -80,6 +119,13 @@
   port does their work too.
 - C `char` parameters are `c_char` in generated code (signed or unsigned as the platform's C
   `char`), not `c_schar`.
+- `doctor` on Windows: a missing `cargo` gets the C++ Build Tools, then
+  `winget install Rustlang.Rustup`, instead of the `sh.rustup.rs` script, which needs a Unix shell.
+  The Build Tools come first because winget runs `rustup-init -y`, which skips them with a warning.
+  The Build Tools fix also adds the C++ workload (and the ARM64 tools on Windows on ARM): without
+  `--add`, winget installs them with no compiler, linker or Windows SDK. Since winget adds nothing
+  to Build Tools already installed, the fix also says how to add the workload by hand. A fix of
+  several commands prints one per line.
 
 ## 2.1.0 (2026-11-20)
 

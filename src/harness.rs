@@ -1121,7 +1121,9 @@ pub fn trap_args(
 }
 
 /// Edge cases for C pointer parameters: buffers as hex text (`bytes`, `buffer`) or a size of
-/// zeroed bytes (`buffer`), and the starting value behind an `out` pointer.
+/// zeroed bytes (`buffer`), the starting value behind an `out` pointer, a `char **` that starts
+/// NULL, unwritten or at offset 0 (`outptr`), and structs of zeros, ones, minus ones, minimums
+/// and maximums, plus each field zero with the others one (a zero denominator).
 fn c_pointer_traps(ts_type: &str) -> Option<Vec<Value>> {
     Some(match ts_type {
         "bytes" => vec![
@@ -1140,8 +1142,72 @@ fn c_pointer_traps(ts_type: &str) -> Option<Vec<Value>> {
             json!("ff".repeat(16)),
         ],
         "out" => vec![json!(0), json!(-1), json!(2_147_483_647)],
-        _ => return None,
+        t if t.starts_with("outptr:") => vec![json!(true), Value::Null, json!(0)],
+        t => {
+            let s = crate::codegen_c::c_struct(t)?;
+            let field = |pick: &dyn Fn(&[Value]) -> Value, zero: Option<usize>| {
+                let fields = s.fields.iter().enumerate().map(|(i, (ty, name))| {
+                    let edges = c_field_edges(ty);
+                    let v = if zero == Some(i) {
+                        edges[0].clone()
+                    } else {
+                        pick(&edges)
+                    };
+                    (name.clone(), v)
+                });
+                Value::Object(fields.collect())
+            };
+            let mut out: Vec<Value> = (0..5)
+                .map(|k| field(&|e: &[Value]| e[k.min(e.len() - 1)].clone(), None))
+                .collect();
+            out.extend((0..s.fields.len()).map(|i| field(&|e: &[Value]| e[1].clone(), Some(i))));
+            out.dedup();
+            out
+        }
     })
+}
+
+/// Edge values for a C scalar struct field: zero, one, then minus one, the minimum and the
+/// maximum where the type has them (non-finite values for floating point).
+fn c_field_edges(ty: &str) -> Vec<Value> {
+    let ty = ty.trim();
+    if ty.contains("float") || ty.contains("double") {
+        return vec![
+            json!(0.0),
+            json!(1.0),
+            json!(-1.0),
+            json!({ "$num": "NaN" }),
+            json!({ "$num": "Infinity" }),
+            json!({ "$num": "-Infinity" }),
+            json!(0.5),
+            json!(1e300),
+        ];
+    }
+    if ty == "bool" || ty == "_Bool" {
+        return vec![json!(false), json!(true)];
+    }
+    let unsigned = ty.starts_with('u') || ty.starts_with("unsigned") || ty == "size_t";
+    let bits = if ty.contains('8') || ty.ends_with("char") {
+        8
+    } else if ty.contains("16") || ty.contains("short") {
+        16
+    } else if ty.contains("64") || ty.contains("long") || ty.contains("size") || ty.contains("ptr")
+    {
+        64
+    } else {
+        32
+    };
+    if unsigned {
+        let max = if bits == 64 {
+            u64::MAX
+        } else {
+            (1u64 << bits) - 1
+        };
+        vec![json!(0), json!(1), json!(max), json!(max - 1), json!(2)]
+    } else {
+        let max = i64::MAX >> (64 - bits);
+        vec![json!(0), json!(1), json!(-1), json!(-max - 1), json!(max)]
+    }
 }
 
 /// A random value for a C pointer parameter (see `c_pointer_traps`).
@@ -1165,6 +1231,29 @@ fn c_pointer_value(ts_type: &str, rng: &mut Rng) -> Value {
             )
         }
         "buffer" => json!(SIZES[rng.below(SIZES.len())]),
+        t if t.starts_with("outptr:") => [json!(true), Value::Null, json!(0)][rng.below(3)].clone(),
+        t if let Some(s) = crate::codegen_c::c_struct(t) => Value::Object(
+            s.fields
+                .iter()
+                .map(|(ty, name)| {
+                    let edges = c_field_edges(ty);
+                    let small: [i32; 14] =
+                        [0, 1, -1, 2, 3, 7, 12, 25, 30, 1000, 1001, 90000, -5, -48000];
+                    let v = match rng.below(10) {
+                        0..=2 => edges[rng.below(edges.len())].clone(),
+                        _ if edges.len() == 2 => edges[rng.below(2)].clone(),
+                        _ if ty.contains("float") || ty.contains("double") => {
+                            json!(f64::from(small[rng.below(small.len())]) / 4.0)
+                        }
+                        _ if edges[2] != json!(-1) => {
+                            json!(small[rng.below(small.len())].unsigned_abs())
+                        }
+                        _ => json!(small[rng.below(small.len())]),
+                    };
+                    (name.clone(), v)
+                })
+                .collect(),
+        ),
         _ => json!([0, 1, -1, 7, 1000, 65536][rng.below(6)]),
     }
 }
@@ -1179,7 +1268,10 @@ fn args_for(
     for p in params {
         match p.ts_type.as_str() {
             t if t.starts_with("len:") => continue,
-            "bytes" | "buffer" | "out" => {
+            t if matches!(t, "bytes" | "buffer" | "out")
+                || t.starts_with("outptr:")
+                || t.starts_with("struct:") =>
+            {
                 args.push(c_pointer_value(&p.ts_type, rng));
                 continue;
             }

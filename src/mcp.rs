@@ -360,6 +360,7 @@ const TOOL_META: &[ToolMeta] = &[
         [false, false, true, true],
     ),
     meta("map", "Map the port", [true, false, true, false]),
+    meta("package", "Lay out packages", [false, false, true, false]),
     meta(
         "app_record",
         "Record whole app",
@@ -522,6 +523,18 @@ fn tool_schemas() -> Value {
             }, "required": ["repo"] },
         },
         {
+            "name": "package",
+            "description": "Lay out installable packages for a gated port; writes files only, never builds other platforms or publishes. PyO3: a maturin project (abi3 wheel importable under the original module's name). napi: a main npm package whose loader picks `<name>-<platform>` from optionalDependencies and falls back to the original JS, one package per platform (this machine's binary copied in when built). wasm: one npm package with the built pkg/. PyO3 and napi also get a GitHub Actions workflow building macOS (arm64, x86_64), Linux (x86_64, aarch64) and Windows.",
+            "inputSchema": { "type": "object", "properties": {
+                "crate": crate_dir,
+                "name": { "type": "string", "description": "Package name on npm or PyPI; defaults to the crate name." },
+                "version": { "type": "string", "description": "Package version; defaults to the original package's." },
+                "out": { "type": "string", "description": "Output folder; defaults to <crate>/package." },
+                "fallback": { "type": "string", "description": "napi: module to load where no binary fits; defaults to the original file when it is plain JS that imports nothing." },
+                "dry_run": { "type": "boolean", "description": "List the files, write nothing." },
+            }, "required": ["crate"] },
+        },
+        {
             "name": "gate",
             "description": "Definition of done: fmt, clippy -D warnings, cargo test, unsafe with SAFETY comments only, no unimplemented functions, build, API present, recorded behavior matches.",
             "inputSchema": { "type": "object", "properties": { "crate": crate_dir, "node_args": { "type": "array", "items": { "type": "string" }, "description": "Extra arguments for node, e.g. [\"--import=tsx\"]." } }, "required": ["crate"] },
@@ -544,7 +557,7 @@ fn tool_schemas() -> Value {
                 "db_reset": { "type": "string", "description": "Shell command that resets the database before each case (each start for servers); cases then run one at a time." },
                 "db_dump": { "type": "string", "description": "Shell command that prints the database's state (e.g. `sqlite3 app.db .dump`), run after each case or request and recorded with the effects." },
                 "args": { "type": "array", "items": { "type": "string" }, "description": "Servers: arguments every start gets after its command, the original's and every build's ([\"db.json\"]). Implies http; saved." },
-                "fresh": { "type": "array", "items": { "type": "string" }, "description": "Servers: repository files or folders the server reads or writes, snapshotted and copied into a fresh working directory before every start. Implies http; saved." },
+                "fresh": { "type": "array", "items": { "type": "string" }, "description": "Repository files or folders the app reads or writes (a project tree, a database file), snapshotted and copied into a fresh working directory before every case (CLIs) or start (servers); a CLI's removed files are compared too. Saved." },
                 "pace": { "type": "integer", "description": "Servers: milliseconds to wait after each response, for work the server does after answering (a file watcher). Implies http; saved and used by replay; 0 removes it." },
                 "float_tolerance": { "type": "number", "description": "Numeric output: numbers match when they differ by at most this times the larger magnitude (absolute below 1), e.g. 1e-9. Saved with the cases; 0 removes it." },
                 "float_file": { "type": "array", "items": { "type": "string" }, "description": "Written files of raw floats, compared value by value within float_tolerance: `PATH=f32le` or `PATH=f64le`. Saved with the cases." },
@@ -850,6 +863,17 @@ fn call(name: &str, args: &Value) -> Result<Value> {
                 strings("crates").into_iter().map(Into::into).collect();
             serde_json::to_value(crate::port_map::map(&path("repo")?, &crates)?)?
         }
+        "package" => {
+            let crate_dir = path("crate")?;
+            serde_json::to_value(crate::package::package(&crate::package::Options {
+                crate_dir: &crate_dir,
+                name: args["name"].as_str().map(str::to_string),
+                version: args["version"].as_str().map(str::to_string),
+                out: opt_path("out"),
+                dry_run: args["dry_run"].as_bool().unwrap_or(false),
+                fallback: args["fallback"].as_str().map(str::to_string),
+            })?)?
+        }
         "gate" => serde_json::to_value(gate::gate(
             Path::new(&path("crate")?),
             &strings("node_args"),
@@ -1001,6 +1025,7 @@ mod tests {
                 "fuzz",
                 "shadow",
                 "map",
+                "package",
                 "gate",
                 "app_record",
                 "app_replay",
